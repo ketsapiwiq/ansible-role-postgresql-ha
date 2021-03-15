@@ -6,11 +6,11 @@
     owner: "{{ postgresql_service_user }}"
     group: "{{ postgresql_service_group }}"
     mode: 0640
-  notify: reload repmgr
+  notify: restart repmgr
 
 - name: Repmgr | Upload logrotate configuration
   template:
-    src: repmgr_logroate.j2
+    src: repmgr_logrotate.j2
     dest: /etc/logrotate.d/repmgr
     mode: 0640
 
@@ -34,11 +34,11 @@
     dest: "/etc/systemd/system/repmgr{{ postgresql_version }}.service.d/custom.conf"
     mode: 0640
 
-- name: Repmgr | Allow passwordless restarts with postgres user
-  template:
-    src: "sudoers.postgresql.j2"
-    dest: "/etc/sudoers.d/postgresql"
-    mode: 0640
+# - name: Repmgr | Allow passwordless restarts with postgres user
+#   template:
+#     src: "sudoers.postgresql.j2"
+#     dest: "/etc/sudoers.d/postgresql"
+#     mode: 0640
 
 - name: Repmgr | Update .pgpass for postgres user
   template:
@@ -102,14 +102,18 @@
     mode: 0600
   when: repmgr_barman_host and repmgr_barman_server
 
+# WARNING: ansible_hostname will be AnsibleUndefined on all not current nodes, to avoid this you can either specify this var in inventory or execute the role on all nodes at the same time
 - name: Determine repmgr primary hostname
   set_fact:
-    repmgr_primary_hostname: "{% for host, vars in hostvars.items() if 'repmgr_primary' in vars and vars['repmgr_primary'] %}{{ host|trim }}{% endfor %}"
+    repmgr_primary_hostname: "{% for host, vars in hostvars.items() if 'repmgr_primary' in vars and vars['repmgr_primary'] %}{{ hostvars[host]['ansible_hostname'] |trim }}{% endfor %}"
+  failed_when: repmgr_primary_hostname == ''
 
 - name: Debug repmgr primary hostname
   debug:
     msg:
-      "repmgr_primary_hostname": "{{ repmgr_primary_hostname == ansible_hostname }}"
+      "repmgr_primary_hostname": "{{ repmgr_primary_hostname }}"
+      "ansible_hostname": "{{ ansible_hostname }}"
+      "Match?": "{{ repmgr_primary_hostname == ansible_hostname }}"
 
 - name: Repmgr | Register as primary
   command: "repmgr primary register -F"
@@ -117,7 +121,10 @@
   become_user: "{{ postgresql_service_user }}"
   when: ansible_hostname == repmgr_primary_hostname
 
-- name: Repmgr | Ensure postgresql slave is stopped before clone
+# FIXME: when the role falsely detects it's a standby server, it will stop the primary server
+# TODO: detect cloning will work before really stopping and cloning?
+
+- name: Repmgr | Ensure postgresql standby is stopped before clone
   shell: 
     cmd: pg_ctlcluster {{ postgresql_version }} {{ postgresql_cluster_name }} stop
     executable: /bin/bash
@@ -131,7 +138,7 @@
   become_user: "{{ postgresql_service_user }}"
   when: ansible_hostname != repmgr_primary_hostname
 
-- name: Repmgr | Ensure postgresql slave is running after clone
+- name: Repmgr | Ensure postgresql standby is running after clone
   shell: 
     cmd: pg_ctlcluster {{ postgresql_version }} {{ postgresql_cluster_name }} start
     executable: /bin/bash
@@ -143,6 +150,7 @@
   wait_for:
     timeout: 3
   delegate_to: localhost
+  become: no
 
 - name: Repmgr | Register standby
   command: "repmgr -F -h {{ repmgr_primary_hostname }} -U repmgr -d repmgr standby register"
@@ -153,6 +161,14 @@
 - name: Repmgr | Verify cluster functionality
   command: "repmgr -F -h {{ repmgr_primary_hostname }} -U repmgr -d repmgr cluster crosscheck"
   become: yes
+  become_user: "{{ postgresql_service_user }}"
+  ignore_errors: "{{ repmgr_setup_ssh }}"
+  register: repmgr_crosscheck
+
+- name: Repmgr | Verify cluster functionality
+  command: "repmgr -F -h {{ repmgr_primary_hostname }} -U repmgr -d repmgr cluster check"
+  become: yes
+  when: repmgr_crosscheck.rc != 0
   become_user: "{{ postgresql_service_user }}"
 
 - name: Repmgr | Ensure repmgrd is running
@@ -174,6 +190,7 @@
   debug:
     msg:
       "{{ repmgrd_status.stdout_lines }}"
+  ignore_errors: "{{ ansible_check_mode }}"
 
 - name: Repmgr | Setup cluster monitoring history cleanup with cron task
   cron:

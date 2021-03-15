@@ -1,13 +1,16 @@
 ---
 - name: restart postgresql
-  shell: 
-    cmd: pg_ctlcluster {{ postgresql_version }} {{ postgresql_cluster_name }} restart
-    executable: /bin/bash
+  service:
+    name: "{{ postgresql_service_name }}"
+    state: restarted
+#   shell: 
+#     cmd: pg_ctlcluster {{ postgresql_version }} {{ postgresql_cluster_name }} restart
+#     executable: /bin/bash
   become: yes
-  become_user: "{{ postgresql_service_user }}"
+#   become_user: "{{ postgresql_service_user }}"
 
-- name: reload repmgr
-  sysvinit:
+- name: restart repmgr
+  service:
     name: repmgrd
-    state: reloaded
+    state: restarted
   become: yes
