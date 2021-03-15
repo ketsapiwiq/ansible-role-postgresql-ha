@@ -1,7 +1,11 @@
 ---
-- name: Repmgr | Get hosts from targeted group
+- name: Repmgr | Get inventory_hostname from targeted group
   set_fact:
     repmgr_target_group_hosts: "{{ groups[repmgr_target_group] }}"
+
+- name: Repmgr | Debug hosts from targeted group
+  debug:
+    msg: "repmgr_target_group_hosts: {{ groups[repmgr_target_group] }}"
 
 - name: Repmgr | Detect primary
   shell: "repmgr -f {{ postgresql_conf_directory }}/repmgr.conf cluster show | grep primary | cut -d '|' -f 2"
@@ -9,12 +13,18 @@
   become: yes
   become_user: "{{ postgresql_service_user }}"
   ignore_errors: yes
+  failed_when: '"FATAL:" in repmgr_primary_check.stderr or "ERROR:" in repmgr_primary_check.stderr or repmgr_primary_check.stdout == ""'
   check_mode: no
+  changed_when: false
+#    TODO: parse this? get_all_node_records_with_upstream(): unable to retrieve node records
 
 - name: Repmgr | Debug check
   debug:
     msg:
-      "repmgr_primary_hostname": "{{ repmgr_primary_check.stdout | trim }}"
+      "ansible_hostname": "{{ ansible_hostname }}"
+      "repmgr_master": "{{ repmgr_master }}"
+      "repmgr_master_hostname": "{{ repmgr_master_hostname }}"
+      "repmgr_primary_check.stdout": "{{ repmgr_primary_check.stdout | trim }}"
       "repmgr_is_primary": "{{ ansible_hostname == repmgr_primary_check.stdout | trim }}"
     verbosity: 1
 
@@ -25,7 +35,7 @@
 
 - name: Repmgr | Declare as primary for new installation
   set_fact:
-    repmgr_primary: "{{ ansible_hostname == repmgr_master }}"
+    repmgr_primary: "{{ ansible_hostname == repmgr_master_hostname }}"
   when: repmgr_primary_check.stdout == ""
 
 - name: Repmgr | Ensure repmgr_master host exists
