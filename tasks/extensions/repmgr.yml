@@ -25,3 +25,4 @@
     cache_valid_time: "{{ apt_cache_valid_time | default (3600) }}"
   when: ansible_pkg_mgr == "apt"
   notify: restart postgresql
+  become: yes

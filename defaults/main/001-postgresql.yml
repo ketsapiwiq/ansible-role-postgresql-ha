@@ -22,6 +22,7 @@ postgresql_default_auth_method: "peer"
 postgresql_default_auth_method_hosts: "md5"
 
 # The user/group that will run postgresql process or service
+postgresql_service_name: "postgresql"
 postgresql_service_user: "{{ postgresql_admin_user }}"
 postgresql_service_user_pgsql_profile: false
 postgresql_service_group: "{{ postgresql_admin_user }}"
@@ -206,7 +207,7 @@ postgresql_temp_file_limit: -1
 # - Kernel Resource Usage -
 
 postgresql_max_files_per_process: 1000  # min 64
-postgresql_shared_preload_libraries: []
+postgresql_shared_preload_libraries: "{% if postgresql_ext_install_repmgr == True %}['repmgr']{% endif %}"
 
 
 # - Cost-Based Vacuum Delay -

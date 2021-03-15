@@ -10,7 +10,7 @@
 
 - name: Repmgr | Upload logrotate configuration
   template:
-    src: repmgr_logroate.j2
+    src: repmgr_logrotate.j2
     dest: /etc/logrotate.d/repmgr
     mode: 0640
 
@@ -104,6 +104,7 @@
   set_fact:
     repmgr_primary_hostname: "{% for host, vars in hostvars.items() if 'repmgr_primary' in vars and vars['repmgr_primary'] %}{{ host|trim }}{% endfor %}"
   when: repmgr_primary_hostname is not defined
+  failed_when: repmgr_primary_hostname == ''
 
 - name: Debug repmgr primary hostname
   debug:
@@ -116,7 +117,7 @@
   become_user: "{{ postgresql_service_user }}"
   when: ansible_hostname == repmgr_primary_hostname
 
-- name: Repmgr | Ensure postgresql slave is stopped before clone
+- name: Repmgr | Ensure postgresql standby is stopped before clone
   shell: 
     cmd: pg_ctlcluster {{ postgresql_version }} {{ postgresql_cluster_name }} stop
     executable: /bin/bash
@@ -130,7 +131,7 @@
   become_user: "{{ postgresql_service_user }}"
   when: ansible_hostname != repmgr_primary_hostname
 
-- name: Repmgr | Ensure postgresql slave is running after clone
+- name: Repmgr | Ensure postgresql standby is running after clone
   shell: 
     cmd: pg_ctlcluster {{ postgresql_version }} {{ postgresql_cluster_name }} start
     executable: /bin/bash
@@ -171,6 +172,7 @@
   debug:
     msg:
       "{{ repmgrd_status.stdout_lines }}"
+  ignore_errors: "{{ ansible_check_mode }}"
 
 - name: Repmgr | Setup cluster monitoring history cleanup with cron task
   cron:
