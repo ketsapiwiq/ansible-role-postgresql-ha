@@ -162,7 +162,7 @@
   command: "repmgr -F -h {{ repmgr_primary_hostname }} -U repmgr -d repmgr cluster crosscheck"
   become: yes
   become_user: "{{ postgresql_service_user }}"
-  ignore_errors: "{{ repmgr_setup_ssh }}"
+  ignore_errors: "{{ not repmgr_setup_ssh }}"
   register: repmgr_crosscheck
 
 - name: Repmgr | Verify cluster functionality
