@@ -20,6 +20,7 @@
     dest: /etc/repmgr.conf 
     state: link
     mode: 0640
+  ignore_errors: yes
 
 - name: Repmgr | Ensure systemd drop-in directory exists
   file:
@@ -47,6 +48,7 @@
     group: "{{ postgresql_service_group }}"
     mode: 0600
     trim_blocks: no
+  no_log: yes
 
 - name: Repmgr | Ensure ssh keys destination folder exists
   file: 
@@ -87,7 +89,9 @@
         owner: "{{ postgresql_service_user }}"
         group: "{{ postgresql_service_group }}"
         mode: 0600
-  when: check_ssh_keys.changed or repmgr_ssh_force_renewal
+  when:
+  - check_ssh_keys.changed or repmgr_ssh_force_renewal
+  - repmgr_setup_ssh or repmgr_barman_host or repmgr_barman_server
 
 - name: Repmgr | Setup SSH config for Barman
   template:
@@ -163,6 +167,8 @@
   when: repmgr_monitoring_history or repmgr_failover == 'automatic'
   become: yes
   become_user: "{{ postgresql_service_user }}"
+  check_mode: no
+  ignore_errors: "{{ ansible_check_mode }}"
 
 - name: Debug repmgrd status
   debug:

@@ -9,6 +9,7 @@
   become: yes
   become_user: "{{ postgresql_service_user }}"
   ignore_errors: yes
+  check_mode: no
 
 - name: Repmgr | Debug check
   debug:

@@ -8,6 +8,8 @@ repmgr_conninfo: "host={{ ansible_hostname }} user={{ repmgr_user }} dbname={{ r
 repmgr_data_directory: "{{ postgresql_data_directory }}"
 repmgr_version: 5.1
 
+repmgr_setup_ssh: no
+
 # Optional configuration items
 #
 
