@@ -156,6 +156,14 @@
   command: "repmgr -F -h {{ repmgr_primary_hostname }} -U repmgr -d repmgr cluster crosscheck"
   become: yes
   become_user: "{{ postgresql_service_user }}"
+  ignore_errors: "{{ not repmgr_setup_ssh }}"
+  register: repmgr_crosscheck
+
+- name: Repmgr | Verify cluster functionality
+  command: "repmgr -F -h {{ repmgr_primary_hostname }} -U repmgr -d repmgr cluster check"
+  become: yes
+  when: repmgr_crosscheck.rc != 0
+  become_user: "{{ postgresql_service_user }}"
 
 - name: Repmgr | Ensure repmgrd is running
   command: "/usr/bin/repmgrd daemon start"

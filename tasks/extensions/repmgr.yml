@@ -3,6 +3,7 @@
   apt_key:
     url: "{{ repmgr_gpg_key_url }}"
   when: ansible_pkg_mgr == "apt" and repmgr_apt_repository_add
+  become: yes
 
 - name: PostgreSQL | Extensions | Add 2nd Quadrant repo for repmgr | apt
   apt_repository:
