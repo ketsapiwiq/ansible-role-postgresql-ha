@@ -16,7 +16,6 @@
   failed_when: '"FATAL:" in repmgr_primary_check.stderr or "ERROR:" in repmgr_primary_check.stderr or repmgr_primary_check.stdout == ""'
   check_mode: no
   changed_when: false
-#    TODO: parse this? get_all_node_records_with_upstream(): unable to retrieve node records
 
 - name: Repmgr | Debug check
   debug:

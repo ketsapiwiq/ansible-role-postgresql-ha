@@ -20,6 +20,7 @@
     dest: /etc/repmgr.conf 
     state: link
     mode: 0640
+  ignore_errors: "{{ ansible_check_mode }}"
 
 - name: Repmgr | Ensure systemd drop-in directory exists
   file:
@@ -47,6 +48,7 @@
     group: "{{ postgresql_service_group }}"
     mode: 0600
     trim_blocks: no
+  no_log: yes
 
 - name: Repmgr | Ensure ssh keys destination folder exists
   file: 
@@ -167,6 +169,8 @@
   when: repmgr_monitoring_history or repmgr_failover == 'automatic'
   become: yes
   become_user: "{{ postgresql_service_user }}"
+  check_mode: no
+  ignore_errors: "{{ ansible_check_mode }}"
 
 - name: Debug repmgrd status
   debug:
